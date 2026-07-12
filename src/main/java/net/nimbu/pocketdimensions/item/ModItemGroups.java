@@ -1,30 +1,28 @@
 package net.nimbu.pocketdimensions.item;
 
-import net.fabricmc.fabric.api.itemgroup.v1.FabricItemGroup;
-import net.minecraft.item.ItemGroup;
-import net.minecraft.item.ItemStack;
-import net.minecraft.registry.Registries;
-import net.minecraft.registry.Registry;
-import net.minecraft.text.Text;
-import net.minecraft.util.Identifier;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.network.chat.Component;
+import net.minecraft.world.item.CreativeModeTab;
+import net.minecraft.world.item.ItemStack;
+import net.neoforged.neoforge.registries.DeferredHolder;
+import net.neoforged.neoforge.registries.DeferredRegister;
 import net.nimbu.pocketdimensions.PocketDimensions;
 import net.nimbu.pocketdimensions.block.ModBlocks;
 
-public class ModItemGroups {
+public final class ModItemGroups {
+	public static final DeferredRegister<CreativeModeTab> CREATIVE_MODE_TABS =
+			DeferredRegister.create(Registries.CREATIVE_MODE_TAB, PocketDimensions.MOD_ID);
 
-    public static final ItemGroup POCKET_DIMENSIONS_ITEM_GROUP = Registry.register(Registries.ITEM_GROUP,
-            Identifier.of(PocketDimensions.MOD_ID, "pocketdimensions_items"),
-            FabricItemGroup.builder().icon(() -> new ItemStack(ModItems.GATEWAY_WAND))
-                    .displayName(Text.translatable("itemgroup.pocketdimensions.pocketdimensions_items"))
-                    .entries((displayContext, entries) -> {
-                        entries.add(ModItems.GATEWAY_WAND);
-                        entries.add(ModItems.EXPANSION_GEM);
-                        entries.add(ModBlocks.DIMENSION_CUSTOMIZER);
+	public static final DeferredHolder<CreativeModeTab, CreativeModeTab> POCKET_DIMENSIONS_ITEM_GROUP =
+			CREATIVE_MODE_TABS.register("pocketdimensions_items", () -> CreativeModeTab.builder()
+					.icon(() -> new ItemStack(ModItems.GATEWAY_WAND.get()))
+					.title(Component.translatable("itemgroup.pocketdimensions.pocketdimensions_items"))
+					.displayItems((params, output) -> {
+						output.accept(ModItems.GATEWAY_WAND.get());
+						output.accept(ModItems.EXPANSION_GEM.get());
+						output.accept(ModBlocks.DIMENSION_CUSTOMIZER.get());
+					})
+					.build());
 
-                    }).build());
-
-    public static void registerItemGroups() {
-
-        PocketDimensions.LOGGER.info("Registering Item Groups for " + PocketDimensions.MOD_ID);
-    }
+	private ModItemGroups() {}
 }

@@ -4,7 +4,6 @@
   "compatibilityLevel": "JAVA_21",
   "mixins": [
     "BiomeEffectsMixin"
-
   ],
   "client": [
     "BiomeColorsMixin",
@@ -12,8 +11,5 @@
   ],
   "injectors": {
     "defaultRequire": 1
-  },
-  "overwrites": {
-    "requireAnnotations": true
-	}
+  }
 }

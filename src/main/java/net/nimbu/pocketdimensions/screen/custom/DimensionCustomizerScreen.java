@@ -1,24 +1,23 @@
 package net.nimbu.pocketdimensions.screen.custom;
 
 import com.mojang.blaze3d.systems.RenderSystem;
-import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
-import net.minecraft.block.Block;
-import net.minecraft.block.BlockState;
-import net.minecraft.block.Blocks;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.gui.DrawContext;
-import net.minecraft.client.gui.screen.ingame.HandledScreen;
-import net.minecraft.client.render.LightmapTextureManager;
-import net.minecraft.client.render.OverlayTexture;
-import net.minecraft.client.util.math.MatrixStack;
-import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.entity.player.PlayerInventory;
-import net.minecraft.text.Text;
-import net.minecraft.util.Identifier;
-import net.minecraft.util.math.RotationAxis;
+import com.mojang.math.Axis;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
+import net.minecraft.client.renderer.LightTexture;
+import net.minecraft.client.renderer.texture.OverlayTexture;
+import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.state.BlockState;
+import net.neoforged.neoforge.network.PacketDistributor;
 import net.nimbu.pocketdimensions.PocketDimensions;
 import net.nimbu.pocketdimensions.block.ModBlocks;
-import net.nimbu.pocketdimensions.component.ModComponentInitializer;
+import net.nimbu.pocketdimensions.component.PlayerGatewayData;
 import net.nimbu.pocketdimensions.network.ClientPocketDimensionPersistentState;
 import net.nimbu.pocketdimensions.network.GatewayMaterialPayload;
 import net.nimbu.pocketdimensions.network.UpdateBiomePacket;
@@ -28,280 +27,212 @@ import net.nimbu.pocketdimensions.screen.widgets.Slider;
 
 import java.util.Optional;
 
-public class DimensionCustomizerScreen extends HandledScreen<DimensionCustomizerScreenHandler> {
+public class DimensionCustomizerScreen extends AbstractContainerScreen<DimensionCustomizerScreenHandler> {
+	public static final ResourceLocation SLIDER_KNOB = ResourceLocation.fromNamespaceAndPath(PocketDimensions.MOD_ID, "textures/gui/widgets/slider_knob.png");
+	public static final ResourceLocation BACKGROUND = ResourceLocation.fromNamespaceAndPath(PocketDimensions.MOD_ID, "textures/gui/pocket_dimension_customizer/pocket_dimension_customizer.png");
+	public static final ResourceLocation BACKGROUND_0 = ResourceLocation.fromNamespaceAndPath(PocketDimensions.MOD_ID, "textures/gui/pocket_dimension_customizer/pocket_dimension_customizer_0.png");
+	public static final ResourceLocation BACKGROUND_1 = ResourceLocation.fromNamespaceAndPath(PocketDimensions.MOD_ID, "textures/gui/pocket_dimension_customizer/pocket_dimension_customizer_1.png");
+	public static final ResourceLocation BACKGROUND_2 = ResourceLocation.fromNamespaceAndPath(PocketDimensions.MOD_ID, "textures/gui/pocket_dimension_customizer/pocket_dimension_customizer_2.png");
+	public static final ResourceLocation BACKGROUND_3 = ResourceLocation.fromNamespaceAndPath(PocketDimensions.MOD_ID, "textures/gui/pocket_dimension_customizer/pocket_dimension_customizer_3.png");
+	public static final ResourceLocation BACKGROUND_4 = ResourceLocation.fromNamespaceAndPath(PocketDimensions.MOD_ID, "textures/gui/pocket_dimension_customizer/pocket_dimension_customizer_4.png");
 
-    public static final Identifier SLIDER_KNOB = Identifier.of(PocketDimensions.MOD_ID, "textures/gui/widgets/slider_knob.png");
-    public static final Identifier BACKGROUND = Identifier.of(PocketDimensions.MOD_ID, "textures/gui/pocket_dimension_customizer/pocket_dimension_customizer.png");
-    public static final Identifier BACKGROUND_0 = Identifier.of(PocketDimensions.MOD_ID, "textures/gui/pocket_dimension_customizer/pocket_dimension_customizer_0.png");
-    public static final Identifier BACKGROUND_1 = Identifier.of(PocketDimensions.MOD_ID, "textures/gui/pocket_dimension_customizer/pocket_dimension_customizer_1.png");
-    public static final Identifier BACKGROUND_2 = Identifier.of(PocketDimensions.MOD_ID, "textures/gui/pocket_dimension_customizer/pocket_dimension_customizer_2.png");
-    public static final Identifier BACKGROUND_3 = Identifier.of(PocketDimensions.MOD_ID, "textures/gui/pocket_dimension_customizer/pocket_dimension_customizer_3.png");
-    public static final Identifier BACKGROUND_4 = Identifier.of(PocketDimensions.MOD_ID, "textures/gui/pocket_dimension_customizer/pocket_dimension_customizer_4.png");
-    private RGBSliderGroup grassSliders;
-    private RGBSliderGroup leavesSliders;
-    private RGBSliderGroup waterSliders;
-    private RGBSliderGroup skySliders;
-    private Slider doorSlider;
+	private RGBSliderGroup grassSliders;
+	private RGBSliderGroup leavesSliders;
+	private RGBSliderGroup waterSliders;
+	private RGBSliderGroup skySliders;
+	private Slider doorSlider;
 
-    public DimensionCustomizerScreen(DimensionCustomizerScreenHandler handler, PlayerInventory inventory, Text title) {
-        super(handler, new PlayerInventory(inventory.player), Text.of(""));
-    }
+	public DimensionCustomizerScreen(DimensionCustomizerScreenHandler handler, Inventory inventory, Component title) {
+		super(handler, inventory, Component.empty());
+	}
 
-    @Override
-    protected void init() {
-        super.init();
+	@Override
+	protected void init() {
+		super.init();
 
-        MinecraftClient client = MinecraftClient.getInstance();
-        PlayerEntity player = client.player;
+		Minecraft client = Minecraft.getInstance();
+		Player player = client.player;
 
-        grassSliders = new RGBSliderGroup(x + backgroundWidth - 101, y + 114, 89, 46, 5, 3, handler.getGrassColour());
-        grassSliders.forEachChild(this::addDrawableChild);
-        leavesSliders = new RGBSliderGroup(x + backgroundWidth - 101, y + 114, 89, 46, 5, 3, handler.getFoliageColour());
-        leavesSliders.forEachChild(this::addDrawableChild);
-        waterSliders = new RGBSliderGroup(x + backgroundWidth - 101, y + 114, 89, 46, 5, 3, handler.getWaterColour());
-        waterSliders.forEachChild(this::addDrawableChild);
-        skySliders = new RGBSliderGroup(x + backgroundWidth - 101, y + 114, 89, 46, 5, 3, handler.getSkyColour());
-        skySliders.forEachChild(this::addDrawableChild);
-        doorSlider = new Slider(x + backgroundWidth - 113, y + 130, 68, 46, Text.of("Door Material"), ModComponentInitializer.PLAYER_GATEWAY_KEY.get(player).getGatewayMaterial(), 11);
-        doorSlider.forEachChild(this::addDrawableChild);
+		grassSliders = new RGBSliderGroup(leftPos + imageWidth - 101, topPos + 114, 89, 46, 5, 3, menu.getGrassColour());
+		grassSliders.visitWidgets(this::addRenderableWidget);
+		leavesSliders = new RGBSliderGroup(leftPos + imageWidth - 101, topPos + 114, 89, 46, 5, 3, menu.getFoliageColour());
+		leavesSliders.visitWidgets(this::addRenderableWidget);
+		waterSliders = new RGBSliderGroup(leftPos + imageWidth - 101, topPos + 114, 89, 46, 5, 3, menu.getWaterColour());
+		waterSliders.visitWidgets(this::addRenderableWidget);
+		skySliders = new RGBSliderGroup(leftPos + imageWidth - 101, topPos + 114, 89, 46, 5, 3, menu.getSkyColour());
+		skySliders.visitWidgets(this::addRenderableWidget);
+		int material = player != null ? PlayerGatewayData.get(player).getGatewayMaterial() : 6;
+		doorSlider = new Slider(leftPos + imageWidth - 113, topPos + 130, 68, 46, Component.literal("Door Material"), material, 11);
+		doorSlider.visitWidgets(this::addRenderableWidget);
 
+		addRenderableWidget(InvisibleButton.builder(Component.literal("Grass colours"), button -> {
+			grassSliders.setVisibility(true);
+			leavesSliders.setVisibility(false);
+			waterSliders.setVisibility(false);
+			skySliders.setVisibility(false);
+			doorSlider.setVisibility(false);
+		}).dimensions(leftPos + 1, topPos + 7, 46, 17).build());
 
-        InvisibleButton grassColours = InvisibleButton.builder( //grass colours
-                Text.literal("Grass colours"),
-                button -> {
-                    grassSliders.setVisibility(true);
-                    leavesSliders.setVisibility(false);
-                    waterSliders.setVisibility(false);
-                    skySliders.setVisibility(false);
-                    doorSlider.setVisibility(false);
-                }
-        ).dimensions(x+1, y + 7, 46, 17).build();
-        addDrawableChild(grassColours);
+		addRenderableWidget(InvisibleButton.builder(Component.literal("Foliage colours"), button -> {
+			grassSliders.setVisibility(false);
+			leavesSliders.setVisibility(true);
+			waterSliders.setVisibility(false);
+			skySliders.setVisibility(false);
+			doorSlider.setVisibility(false);
+		}).dimensions(leftPos + 1, topPos + 24, 46, 17).build());
 
-        InvisibleButton foliageColours = InvisibleButton.builder( //leaf colours
-                Text.literal("Foliage colours"),
-                button -> {
-                    grassSliders.setVisibility(false);
-                    leavesSliders.setVisibility(true);
-                    waterSliders.setVisibility(false);
-                    skySliders.setVisibility(false);
-                    doorSlider.setVisibility(false);
-                }
-        ).dimensions(x + 1, y + 24, 46, 17).build();
-        addDrawableChild(foliageColours);
+		addRenderableWidget(InvisibleButton.builder(Component.literal("Water colours"), button -> {
+			grassSliders.setVisibility(false);
+			leavesSliders.setVisibility(false);
+			waterSliders.setVisibility(true);
+			skySliders.setVisibility(false);
+			doorSlider.setVisibility(false);
+		}).dimensions(leftPos + 1, topPos + 41, 46, 17).build());
 
-        InvisibleButton waterMenuButton = InvisibleButton.builder( //water colours and water fog colours
-                Text.literal("Water colours"),
-                button -> {
-                    grassSliders.setVisibility(false);
-                    leavesSliders.setVisibility(false);
-                    waterSliders.setVisibility(true);
-                    skySliders.setVisibility(false);
-                    doorSlider.setVisibility(false);
-                }
-        ).dimensions(x + 1, y + 41, 46, 17).build();
-        addDrawableChild(waterMenuButton);
+		addRenderableWidget(InvisibleButton.builder(Component.literal("Sky colour"), button -> {
+			grassSliders.setVisibility(false);
+			leavesSliders.setVisibility(false);
+			waterSliders.setVisibility(false);
+			skySliders.setVisibility(true);
+			doorSlider.setVisibility(false);
+		}).dimensions(leftPos + 1, topPos + 58, 46, 17).build());
 
-        InvisibleButton skyMenuButton = InvisibleButton.builder(
-                Text.literal("Sky colour"),
-                button -> {
-                    grassSliders.setVisibility(false);
-                    leavesSliders.setVisibility(false);
-                    waterSliders.setVisibility(false);
-                    skySliders.setVisibility(true);
-                    doorSlider.setVisibility(false);
-                }
-        ).dimensions(x + 1, y + 58, 46, 17).build();
-        addDrawableChild(skyMenuButton);
+		addRenderableWidget(InvisibleButton.builder(Component.literal("Door material"), button -> {
+			grassSliders.setVisibility(false);
+			leavesSliders.setVisibility(false);
+			waterSliders.setVisibility(false);
+			skySliders.setVisibility(false);
+			doorSlider.setVisibility(true);
+		}).dimensions(leftPos + 1, topPos + 75, 46, 17).build());
 
-        InvisibleButton doorMenuButton = InvisibleButton.builder(
-                Text.literal("Door material"),
-                button -> {
-                    grassSliders.setVisibility(false);
-                    leavesSliders.setVisibility(false);
-                    waterSliders.setVisibility(false);
-                    skySliders.setVisibility(false);
-                    doorSlider.setVisibility(true);
-                }
-        ).dimensions(x + 1, y + 75, 46, 17).build();
-        addDrawableChild(doorMenuButton);
+		grassSliders.setVisibility(true);
+		leavesSliders.setVisibility(false);
+		waterSliders.setVisibility(false);
+		skySliders.setVisibility(false);
+		doorSlider.setVisibility(false);
+	}
 
-        grassSliders.setVisibility(true);
-        leavesSliders.setVisibility(false);
-        waterSliders.setVisibility(false);
-        skySliders.setVisibility(false);
-        doorSlider.setVisibility(false);
-    }
+	@Override
+	public void render(GuiGraphics context, int mouseX, int mouseY, float delta) {
+		super.render(context, mouseX, mouseY, delta);
 
-    @Override
-    public void render(DrawContext context, int mouseX, int mouseY, float delta) {
-        super.render(context, mouseX, mouseY, delta);
+		int[] skyColour = skySliders.getColour();
+		int[] waterColour = waterSliders.getColour();
+		int[] leavesColour = leavesSliders.getColour();
+		int[] grassColour = grassSliders.getColour();
 
+		if (grassSliders.getVisibility()) {
+			renderBlock(context, Blocks.DIRT.defaultBlockState(), 51, 255, 255, 255);
+			renderBlock(context, ModBlocks.GUI_GRASS.get().defaultBlockState(), 51, grassColour[0], grassColour[1], grassColour[2]);
+		} else if (skySliders.getVisibility()) {
+			renderBlock(context, Blocks.WHITE_STAINED_GLASS.defaultBlockState(), 51, skyColour[0], skyColour[1], skyColour[2]);
+		} else if (waterSliders.getVisibility()) {
+			renderBlock(context, ModBlocks.GUI_WATER.get().defaultBlockState(), 51, waterColour[0], waterColour[1], waterColour[2]);
+		} else if (leavesSliders.getVisibility()) {
+			renderBlock(context, ModBlocks.GUI_OAK_LEAVES.get().defaultBlockState(), 51, leavesColour[0], leavesColour[1], leavesColour[2]);
+		} else if (doorSlider.getVisibility()) {
+			Block blockType = switch (doorSlider.getValue()) {
+				case 1 -> Blocks.OAK_PLANKS;
+				case 2 -> Blocks.SPRUCE_PLANKS;
+				case 3 -> Blocks.BIRCH_PLANKS;
+				case 4 -> Blocks.JUNGLE_PLANKS;
+				case 5 -> Blocks.ACACIA_PLANKS;
+				case 7 -> Blocks.MANGROVE_PLANKS;
+				case 8 -> Blocks.CHERRY_PLANKS;
+				case 9 -> Blocks.CRIMSON_PLANKS;
+				case 10 -> Blocks.WARPED_PLANKS;
+				case 11 -> Blocks.STRIPPED_BAMBOO_BLOCK;
+				default -> Blocks.DARK_OAK_PLANKS;
+			};
+			renderBlock(context, blockType.defaultBlockState(), 51, 255, 255, 255);
+		}
+	}
 
+	@Override
+	protected void renderLabels(GuiGraphics context, int mouseX, int mouseY) {
+	}
 
-        int[] skyColour = skySliders.getColour();
-        int[] waterColour = waterSliders.getColour();
-        int[] leavesColour = leavesSliders.getColour();
-        int[] grassColour = grassSliders.getColour();
+	private void renderBlock(GuiGraphics context, BlockState state, float scale, int r, int g, int b) {
+		int x = this.leftPos + 72;
+		int y = this.topPos + 80;
+		Minecraft client = Minecraft.getInstance();
 
-        if(grassSliders.getVisibility()) {
-            renderBlock(context, Blocks.DIRT.getDefaultState(),51, 255, 255, 255);
-            renderBlock(context, ModBlocks.GUI_GRASS.getDefaultState(), 51, grassColour[0], grassColour[1], grassColour[2]);
-        }
-        else if(skySliders.getVisibility()) {
-            renderBlock(context, Blocks.WHITE_STAINED_GLASS.getDefaultState(), 51, skyColour[0], skyColour[1], skyColour[2]);
-        }
-        else if(waterSliders.getVisibility()) {
-            renderBlock(context, ModBlocks.GUI_WATER.getDefaultState(), 51, waterColour[0], waterColour[1], waterColour[2]);
-        }
-        else if(leavesSliders.getVisibility()) {
-            renderBlock(context, ModBlocks.GUI_OAK_LEAVES.getDefaultState(), 51, leavesColour[0], leavesColour[1], leavesColour[2]);
-        }
-        else if(doorSlider.getVisibility()){
-            Block blockType;
-            switch (doorSlider.getValue()){
-                case 1: blockType=Blocks.OAK_PLANKS; break;
-                case 2: blockType=Blocks.SPRUCE_PLANKS; break;
-                case 3: blockType=Blocks.BIRCH_PLANKS; break;
-                case 4: blockType=Blocks.JUNGLE_PLANKS; break;
-                case 5: blockType=Blocks.ACACIA_PLANKS; break;
-                //case 6: blockType=Blocks.DARK_OAK_PLANKS; break;
-                case 7: blockType=Blocks.MANGROVE_PLANKS; break;
-                case 8: blockType=Blocks.CHERRY_PLANKS; break;
-                case 9: blockType=Blocks.CRIMSON_PLANKS; break;
-                case 10: blockType=Blocks.WARPED_PLANKS; break;
-                case 11: blockType=Blocks.STRIPPED_BAMBOO_BLOCK; break;
-                default: blockType=Blocks.DARK_OAK_PLANKS; break;
-            }
-            renderBlock(context, blockType.getDefaultState(), 51, 255, 255, 255);
-        }
-//        else {
-//            testSample(context, x + backgroundWidth - 70, y, 70, 70,
-//                    0xFF000000 | (fogColour[0] << 16) | (fogColour[1] << 8) | fogColour[2],
-//                    0xFF000000 | (waterColour[0] << 16) | (waterColour[1] << 8) | waterColour[2],
-//                    0xFF000000 | ((waterColour[0] / 10) << 16) | ((waterColour[1] / 10) << 8) | (waterColour[2] / 10),
-//                    0xFF000000 | (leavesColour[0] << 16) | (leavesColour[1] << 8) | leavesColour[2],
-//                    0xFF000000 | (grassColour[0] << 16) | (grassColour[1] << 8) | grassColour[2]
-//            );
-//        }
-    }
+		var matrices = context.pose();
+		matrices.pushPose();
+		matrices.translate(x, y, 100);
+		matrices.scale(scale, -scale, scale);
+		matrices.mulPose(Axis.XP.rotationDegrees(30));
+		matrices.mulPose(Axis.YP.rotationDegrees(45));
 
-    @Override
-    protected void drawForeground(DrawContext context, int mouseX, int mouseY) {
-    }
+		int light = LightTexture.FULL_BRIGHT;
+		RenderSystem.enableBlend();
+		RenderSystem.setShaderColor(r / 255f, g / 255f, b / 255f, 1f);
 
-//    private void testSample(DrawContext context, int x, int y, int width, int height, int C1, int C2,int C3,int C4,int C5) {
-//
-//        int widthPer = width/5;
-//
-//        context.fill(x, y, x + widthPer, y + height, C1);
-//        context.fill(x + widthPer, y, x + 2 * widthPer, y + height, C2);
-//        context.fill(x + 2 * widthPer, y, x + 3 * widthPer, y + height, C3);
-//        context.fill(x + 3 * widthPer, y, x + 4 * widthPer, y + height, C4);
-//        context.fill(x + 4 * widthPer, y, x + 5 * widthPer, y + height, C5);
-//    }
+		client.getBlockRenderer().renderSingleBlock(
+				state,
+				matrices,
+				context.bufferSource(),
+				light,
+				OverlayTexture.NO_OVERLAY
+		);
 
-    private void renderBlock(
-            DrawContext context,
-            BlockState state,
-            float scale,
-            int r, int g, int b
-    ) {
+		context.flush();
+		RenderSystem.setShaderColor(1f, 1f, 1f, 1f);
+		RenderSystem.disableBlend();
+		matrices.popPose();
+	}
 
-        int x = this.x + 72;
-        int y = this.y + 80;
-        MinecraftClient client = MinecraftClient.getInstance();
+	@Override
+	public void setFocused(boolean focused) {
+		super.setFocused(true);
+	}
 
-        MatrixStack matrices = context.getMatrices();
-        matrices.push();
+	@Override
+	protected void renderBg(GuiGraphics context, float delta, int mouseX, int mouseY) {
+		int x = (width - imageWidth) / 2;
+		int y = (height - imageHeight) / 2;
+		context.blit(BACKGROUND, x, y, 0, 0, imageWidth, imageHeight);
+		if (grassSliders.getVisibility()) context.blit(BACKGROUND_0, x, y, 0, 0, 256, 256);
+		if (leavesSliders.getVisibility()) context.blit(BACKGROUND_1, x, y, 0, 0, 256, 256);
+		if (waterSliders.getVisibility()) context.blit(BACKGROUND_2, x, y, 0, 0, 256, 256);
+		if (skySliders.getVisibility()) context.blit(BACKGROUND_3, x, y, 0, 0, 256, 256);
+		if (doorSlider.getVisibility()) context.blit(BACKGROUND_4, x, y, 0, 0, 256, 256);
+	}
 
-        matrices.translate(x, y, 100);
-        matrices.scale(scale, -scale, scale); //flip vertically
-        matrices.multiply(RotationAxis.POSITIVE_X.rotationDegrees(30));
-        matrices.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(45));
+	@Override
+	public void removed() {
+		applyChanges();
+		super.removed();
+	}
 
-        int light = LightmapTextureManager.MAX_LIGHT_COORDINATE;
+	private void applyChanges() {
+		int[] fogColour = skySliders.getColour();
+		int[] waterColour = waterSliders.getColour();
+		int[] foliageColour = leavesSliders.getColour();
+		int[] grassColour = grassSliders.getColour();
 
-        RenderSystem.enableBlend();
-        RenderSystem.setShaderColor(r / 255f,g / 255f,b / 255f,1f);
+		int lighten = 40;
+		int fogHex = (Math.min(255, fogColour[0] + lighten) << 16)
+				| (Math.min(255, fogColour[1] + lighten) << 8)
+				| (Math.min(255, fogColour[2] + lighten));
+		int skyHex = (fogColour[0] << 16) | (fogColour[1] << 8) | fogColour[2];
+		int waterHex = (waterColour[0] << 16) | (waterColour[1] << 8) | waterColour[2];
+		int waterFogHex = (waterColour[0] / 10 << 16) | (waterColour[1] / 10 << 8) | waterColour[2] / 10;
+		int foliageHex = (foliageColour[0] << 16) | (foliageColour[1] << 8) | foliageColour[2];
+		int grassHex = (grassColour[0] << 16) | (grassColour[1] << 8) | grassColour[2];
 
-        client.getBlockRenderManager().renderBlockAsEntity(
-                state,
-                matrices,
-                context.getVertexConsumers(),
-                light,
-                OverlayTexture.DEFAULT_UV
-        );
+		ClientPocketDimensionPersistentState.getDynamicBiomeEffects().setFogColor(fogHex);
+		ClientPocketDimensionPersistentState.getDynamicBiomeEffects().setSkyColor(skyHex);
+		ClientPocketDimensionPersistentState.getDynamicBiomeEffects().setWaterColor(waterHex);
+		ClientPocketDimensionPersistentState.getDynamicBiomeEffects().setWaterFogColor(waterFogHex);
+		ClientPocketDimensionPersistentState.getDynamicBiomeEffects().setFoliageColor(Optional.of(foliageHex));
+		ClientPocketDimensionPersistentState.getDynamicBiomeEffects().setGrassColor(Optional.of(grassHex));
+		PacketDistributor.sendToServer(new UpdateBiomePacket(ClientPocketDimensionPersistentState.getDynamicBiomeEffects()));
+		PacketDistributor.sendToServer(new GatewayMaterialPayload(doorSlider.getValue()));
 
-        context.draw(); //flush
-
-        RenderSystem.setShaderColor(1f, 1f, 1f, 1f);
-        RenderSystem.disableBlend();
-
-        matrices.pop();
-    }
-
-    @Override
-    public void setFocused(boolean focused) {
-        super.setFocused(true);
-    }
-
-    @Override
-    protected void drawBackground(DrawContext context, float delta, int mouseX, int mouseY) {
-        int x = (width - backgroundWidth) / 2; //background with and height variables are the dimensions of a default inventory menu
-        int y = (height - backgroundHeight) / 2;
-
-        context.drawTexture(BACKGROUND, x, y, 0, 0, backgroundWidth, backgroundHeight);
-
-        if(grassSliders.getVisibility()){context.drawTexture(BACKGROUND_0, x,y,0,0, 256, 256);}
-        if(leavesSliders.getVisibility()){context.drawTexture(BACKGROUND_1, x,y,0,0, 256, 256);}
-        if(waterSliders.getVisibility()){context.drawTexture(BACKGROUND_2, x,y,0,0, 256, 256);}
-        if(skySliders.getVisibility()){context.drawTexture(BACKGROUND_3, x,y,0,0, 256, 256);}
-        if(doorSlider.getVisibility()){context.drawTexture(BACKGROUND_4, x,y,0,0, 256, 256);}
-
-    }
-
-    @Override
-    public void removed() {
-        applyChanges();
-        super.removed();
-    }
-
-    private void applyChanges() {
-        int[] fogColour = skySliders.getColour();
-        int[] waterColour = waterSliders.getColour();
-        int[] foliageColour = leavesSliders.getColour();
-        int[] grassColour = grassSliders.getColour();
-
-        int lighten = 40; //lighten fog uniformly for all colours
-        int fogHex = (Math.min(255, fogColour[0] + lighten) << 16)
-                | (Math.min(255, fogColour[1] + lighten) << 8)
-                |  (Math.min(255, fogColour[2] + lighten));
-        int skyHex = (fogColour[0] << 16) | (fogColour[1] << 8) | fogColour[2];
-        int waterHex = (waterColour[0] << 16) | (waterColour[1] << 8) | waterColour[2];
-        int waterFogHex = (waterColour[0] / 10 << 16) | (waterColour[1] / 10 << 8) | waterColour[2] / 10;
-        int foliageHex = (foliageColour[0] << 16) | (foliageColour[1] << 8) | foliageColour[2];
-        int grassHex = (grassColour[0] << 16) | (grassColour[1] << 8) | grassColour[2];
-
-        ClientPocketDimensionPersistentState.getDynamicBiomeEffects().setFogColor(fogHex);
-        ClientPocketDimensionPersistentState.getDynamicBiomeEffects().setSkyColor(skyHex);
-        ClientPocketDimensionPersistentState.getDynamicBiomeEffects().setWaterColor(waterHex);
-        ClientPocketDimensionPersistentState.getDynamicBiomeEffects().setWaterFogColor(waterFogHex);
-        ClientPocketDimensionPersistentState.getDynamicBiomeEffects().setFoliageColor(Optional.of(foliageHex));
-        ClientPocketDimensionPersistentState.getDynamicBiomeEffects().setGrassColor(Optional.of(grassHex));
-        ClientPlayNetworking.send(new UpdateBiomePacket(ClientPocketDimensionPersistentState.getDynamicBiomeEffects()));
-
-        ClientPlayNetworking.send(
-                new GatewayMaterialPayload(doorSlider.getValue())
-        );
-
-
-        MinecraftClient client = MinecraftClient.getInstance();
-
-        if (client.world != null) {
-            client.worldRenderer.reload();
-        }
-
-
-    }
+		Minecraft client = Minecraft.getInstance();
+		if (client.level != null) {
+			client.levelRenderer.allChanged();
+		}
+	}
 }

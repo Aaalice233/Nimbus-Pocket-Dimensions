@@ -1,32 +1,26 @@
 package net.nimbu.pocketdimensions.item;
 
-import net.minecraft.component.DataComponentTypes;
-import net.minecraft.item.*;
-import net.minecraft.registry.Registries;
-import net.minecraft.registry.Registry;
-import net.minecraft.util.Identifier;
-import net.minecraft.util.Rarity;
+import net.minecraft.core.component.DataComponents;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.Rarity;
+import net.neoforged.neoforge.registries.DeferredItem;
+import net.neoforged.neoforge.registries.DeferredRegister;
 import net.nimbu.pocketdimensions.PocketDimensions;
-import net.nimbu.pocketdimensions.item.custom.*;
+import net.nimbu.pocketdimensions.item.custom.DimensionExpanderItem;
+import net.nimbu.pocketdimensions.item.custom.GatewayWandItem;
 
-public class ModItems {
+public final class ModItems {
+	public static final DeferredRegister.Items ITEMS = DeferredRegister.createItems(PocketDimensions.MOD_ID);
 
+	public static final DeferredItem<Item> GATEWAY_WAND = ITEMS.register("gateway_wand",
+			() -> new GatewayWandItem(new Item.Properties()
+					.stacksTo(1)
+					.durability(131)
+					.rarity(Rarity.EPIC)
+					.component(DataComponents.ENCHANTMENT_GLINT_OVERRIDE, true)));
 
-    public static final Item GATEWAY_WAND = registerItem("gateway_wand",
-            new GatewayWandItem(new Item.Settings()
-                    .maxCount(1)
-                    .maxDamage(131)
-                    .rarity(Rarity.EPIC)
-                    .component(DataComponentTypes.ENCHANTMENT_GLINT_OVERRIDE, true)));
-    public static final Item EXPANSION_GEM = registerItem("expansion_gem",
-            new DimensionExpanderItem(new Item.Settings()));
+	public static final DeferredItem<Item> EXPANSION_GEM = ITEMS.register("expansion_gem",
+			() -> new DimensionExpanderItem(new Item.Properties()));
 
-
-    private static Item registerItem(String name, Item item){
-        return Registry.register(Registries.ITEM, Identifier.of(PocketDimensions.MOD_ID, name), item);
-    }
-    public static void registerModItems(){
-        PocketDimensions.LOGGER.info("Registering mod items for "+ PocketDimensions.MOD_ID);
-    }
-
+	private ModItems() {}
 }

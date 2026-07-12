@@ -1,32 +1,25 @@
 package net.nimbu.pocketdimensions.network;
 
-import net.minecraft.network.RegistryByteBuf;
-import net.minecraft.network.codec.PacketCodec;
-import net.minecraft.network.packet.CustomPayload;
-import net.minecraft.util.Identifier;
+import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.network.codec.ByteBufCodecs;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.resources.ResourceLocation;
 import net.nimbu.pocketdimensions.PocketDimensions;
 
-public record GatewayMaterialPayload(int material) implements CustomPayload {
+public record GatewayMaterialPayload(int material) implements CustomPacketPayload {
+	public static final Type<GatewayMaterialPayload> TYPE =
+			new Type<>(ResourceLocation.fromNamespaceAndPath(PocketDimensions.MOD_ID, "set_gateway_material"));
 
-    public static final Id<GatewayMaterialPayload> ID =
-            new Id<>(Identifier.of(PocketDimensions.MOD_ID, "set_gateway_material"));
+	public static final StreamCodec<RegistryFriendlyByteBuf, GatewayMaterialPayload> STREAM_CODEC =
+			StreamCodec.composite(
+					ByteBufCodecs.VAR_INT,
+					GatewayMaterialPayload::material,
+					GatewayMaterialPayload::new
+			);
 
-    public static final PacketCodec<RegistryByteBuf, GatewayMaterialPayload> CODEC =
-            PacketCodec.of(
-                    GatewayMaterialPayload::write,
-                    GatewayMaterialPayload::read
-            );
-
-    private void write(RegistryByteBuf buf) {
-        buf.writeInt(material);
-    }
-
-    private static GatewayMaterialPayload read(RegistryByteBuf buf) {
-        return new GatewayMaterialPayload(buf.readInt());
-    }
-
-    @Override
-    public Id<? extends CustomPayload> getId() {
-        return ID;
-    }
+	@Override
+	public Type<? extends CustomPacketPayload> type() {
+		return TYPE;
+	}
 }

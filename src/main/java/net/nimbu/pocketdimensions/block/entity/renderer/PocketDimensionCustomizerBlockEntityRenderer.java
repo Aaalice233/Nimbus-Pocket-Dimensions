@@ -1,62 +1,48 @@
 package net.nimbu.pocketdimensions.block.entity.renderer;
 
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.render.*;
-import net.minecraft.client.render.block.entity.BlockEntityRenderer;
-import net.minecraft.client.render.block.entity.BlockEntityRendererFactory;
-import net.minecraft.client.render.item.ItemRenderer;
-import net.minecraft.client.util.math.MatrixStack;
-import net.minecraft.item.ItemStack;
-import net.minecraft.item.Items;
-import net.minecraft.util.Identifier;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.MathHelper;
-import net.minecraft.util.math.RotationAxis;
-import net.minecraft.world.LightType;
-import net.minecraft.world.World;
+import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.blaze3d.vertex.VertexConsumer;
+import com.mojang.math.Axis;
+import net.minecraft.client.renderer.MultiBufferSource;
+import net.minecraft.client.renderer.RenderType;
+import net.minecraft.client.renderer.blockentity.BlockEntityRenderer;
+import net.minecraft.client.renderer.blockentity.BlockEntityRendererProvider;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.util.Mth;
+import net.minecraft.world.level.Level;
 import net.nimbu.pocketdimensions.PocketDimensions;
 import net.nimbu.pocketdimensions.block.entity.custom.PocketDimensionCustomizerBlockEntity;
 import net.nimbu.pocketdimensions.entity.client.PocketDimensionOrbModel;
 import net.nimbu.pocketdimensions.worldgen.dimension.ModDimensions;
 
 public class PocketDimensionCustomizerBlockEntityRenderer implements BlockEntityRenderer<PocketDimensionCustomizerBlockEntity> {
+	public static final ResourceLocation ORB_TEXTURE =
+			ResourceLocation.fromNamespaceAndPath(PocketDimensions.MOD_ID, "textures/entity/dimension_customizer_orb.png");
+	private final PocketDimensionOrbModel orb;
 
-    public static final Identifier ORB_TEXTURE =
-            Identifier.of(PocketDimensions.MOD_ID, "textures/entity/dimension_customizer_orb.png");
-    private final PocketDimensionOrbModel orb;
+	public PocketDimensionCustomizerBlockEntityRenderer(BlockEntityRendererProvider.Context context) {
+		this.orb = new PocketDimensionOrbModel(context.bakeLayer(PocketDimensionOrbModel.ORB));
+	}
 
-    public PocketDimensionCustomizerBlockEntityRenderer(BlockEntityRendererFactory.Context context) {
-        this.orb = new PocketDimensionOrbModel(context.getLayerModelPart(PocketDimensionOrbModel.ORB));
-    }
+	@Override
+	public void render(PocketDimensionCustomizerBlockEntity entity, float tickDelta, PoseStack matrices,
+	                   MultiBufferSource vertexConsumers, int light, int overlay) {
+		Level world = entity.getLevel();
+		if (world == null) return;
+		if (world.dimensionTypeRegistration().is(ModDimensions.POCKET_DIM_TYPE)) {
+			float g = entity.ticks + tickDelta;
+			matrices.pushPose();
+			matrices.translate(0.5f, 1.0f, 0.5f);
+			matrices.translate(0, Mth.sin(g * 0.03F) * 0.1F, 0);
+			matrices.scale(1.2f, 1.2f, 1.2f);
+			matrices.mulPose(Axis.YP.rotationDegrees(entity.rotation));
 
-    @Override
-    public void render(PocketDimensionCustomizerBlockEntity entity, float tickDelta, MatrixStack matrices,
-                       VertexConsumerProvider vertexConsumers, int light, int overlay) {
-        World world = entity.getWorld();
-        if (world == null) return;
-        if (world.getDimensionEntry().matchesKey(ModDimensions.POCKET_DIM_TYPE)) {
-            ItemRenderer itemRenderer = MinecraftClient.getInstance().getItemRenderer();
-            ItemStack stack = Items.BRICKS.getDefaultStack();
-            float g = entity.ticks + tickDelta; //tickDelta is the change in ticks since last call - prevents lag causing issues with rendering
+			float time = world.getGameTime() + tickDelta;
+			this.orb.ring.yRot = -time * 0.03F;
 
-            matrices.push();
-            matrices.translate(0.5f, 1.0f, 0.5f);
-            matrices.translate(0, MathHelper.sin(g * 0.03F) * 0.1F, 0);
-            matrices.scale(1.2f, 1.2f, 1.2f);
-            matrices.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(entity.rotation));
-
-            float time = entity.getWorld().getTime() + tickDelta;
-            this.orb.ring.yaw = -time * 0.03F;
-
-            VertexConsumer vertexConsumer = vertexConsumers.getBuffer(RenderLayer.getEntityCutout(ORB_TEXTURE));
-            this.orb.renderOrb(matrices, vertexConsumer, 255, overlay, -1);
-            matrices.pop();
-        }
-    }
-
-    private int getLightLevel(World world, BlockPos pos) {
-        int bLight = world.getLightLevel(LightType.BLOCK, pos);
-        int sLight = world.getLightLevel(LightType.SKY, pos);
-        return LightmapTextureManager.pack(bLight, sLight);
-    }
+			VertexConsumer vertexConsumer = vertexConsumers.getBuffer(RenderType.entityCutout(ORB_TEXTURE));
+			this.orb.renderOrb(matrices, vertexConsumer, 255, overlay, -1);
+			matrices.popPose();
+		}
+	}
 }

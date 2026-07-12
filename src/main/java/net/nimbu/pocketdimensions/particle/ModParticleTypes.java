@@ -1,23 +1,18 @@
 package net.nimbu.pocketdimensions.particle;
 
-import net.fabricmc.fabric.api.particle.v1.FabricParticleTypes;
-import net.minecraft.particle.SimpleParticleType;
-import net.minecraft.registry.Registries;
-import net.minecraft.registry.Registry;
-import net.minecraft.util.Identifier;
+import net.minecraft.core.particles.ParticleType;
+import net.minecraft.core.particles.SimpleParticleType;
+import net.minecraft.core.registries.Registries;
+import net.neoforged.neoforge.registries.DeferredHolder;
+import net.neoforged.neoforge.registries.DeferredRegister;
 import net.nimbu.pocketdimensions.PocketDimensions;
 
-public class ModParticleTypes {
+public final class ModParticleTypes {
+	public static final DeferredRegister<ParticleType<?>> PARTICLE_TYPES =
+			DeferredRegister.create(Registries.PARTICLE_TYPE, PocketDimensions.MOD_ID);
 
-    public static final SimpleParticleType GATEWAY_PROJECTILE_PARTICLE =
-            registerParticle("gateway_projectile_particle", FabricParticleTypes.simple(true)); //will always spawn, even if particles are turned off in settings
+	public static final DeferredHolder<ParticleType<?>, SimpleParticleType> GATEWAY_PROJECTILE_PARTICLE =
+			PARTICLE_TYPES.register("gateway_projectile_particle", () -> new SimpleParticleType(true));
 
-
-
-    private static SimpleParticleType registerParticle(String name, SimpleParticleType simpleParticleType){
-        return Registry.register(Registries.PARTICLE_TYPE, Identifier.of(PocketDimensions.MOD_ID, name), simpleParticleType);
-    }
-    public static void registerParticles(){
-        PocketDimensions.LOGGER.info("Registering particles for "+ PocketDimensions.MOD_ID);
-    }
+	private ModParticleTypes() {}
 }

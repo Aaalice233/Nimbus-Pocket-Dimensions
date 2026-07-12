@@ -1,63 +1,33 @@
 package net.nimbu.pocketdimensions.network;
 
-import net.fabricmc.fabric.api.networking.v1.PacketByteBufs;
-import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
-import net.minecraft.nbt.NbtOps;
-import net.minecraft.network.PacketByteBuf;
-import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.server.world.ServerWorld;
-import net.minecraft.util.math.BlockPos;
+import net.minecraft.core.BlockPos;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
+import net.neoforged.neoforge.network.PacketDistributor;
 import net.nimbu.pocketdimensions.PocketDimensions;
 import net.nimbu.pocketdimensions.persistentstates.PocketDimensionPersistentState;
-import net.nimbu.pocketdimensions.worldgen.biome.DynamicBiomeEffects;
 
 import java.util.Set;
 
-public class PocketDimensionSync {
+public final class PocketDimensionSync {
+	private PocketDimensionSync() {}
 
-    public static void sync(ServerWorld world, ServerPlayerEntity player) {
-        PocketDimensionPersistentState state = PocketDimensionPersistentState.get(world);
+	public static void sync(ServerLevel world, ServerPlayer player) {
+		PocketDimensionPersistentState state = PocketDimensionPersistentState.get(world);
+		Set<BlockPos> rooms = state.getUnlockedRooms();
+		PocketDimensions.LOGGER.info("Sending {} rooms to {}", rooms.size(), player.getName().getString());
+		PacketDistributor.sendToPlayer(player, new RoomSyncPayload(rooms));
+	}
 
-        Set<BlockPos> rooms = state.getUnlockedRooms();
+	public static void updateSingularRoom(ServerPlayer player, BlockPos posToSync) {
+		PacketDistributor.sendToPlayer(player, new SingularRoomPayload(posToSync));
+	}
 
-        PacketByteBuf buf = PacketByteBufs.create();
-        buf.writeInt(rooms.size());
-
-        for (BlockPos pos : rooms) {
-            buf.writeBlockPos(pos);
-        }
-        PocketDimensions.LOGGER.info(
-                "Sending {} rooms to {}",
-                rooms.size(),
-                player.getName().getString()
-        );
-        ServerPlayNetworking.send(player, new RoomSyncPayload(rooms));
-    }
-
-    public static void updateSingularRoom(ServerPlayerEntity player, BlockPos posToSync) {
-        PacketByteBuf buf = PacketByteBufs.create();
-        buf.writeBlockPos(posToSync);
-        ServerPlayNetworking.send(player, new SingularRoomPayload(posToSync));
-    }
-
-    public static void syncDynamicBiome(ServerWorld world, ServerPlayerEntity player)
-    {
-        PocketDimensionPersistentState state = PocketDimensionPersistentState.get(world);
-        PacketByteBuf buf = PacketByteBufs.create();
-        PocketDimensions.LOGGER.info(
-                "doingDynamicBiome with skybox id of {}",
-                state.getSkybox().getPath()
-        );
-        buf.writeBoolean(world.getRegistryKey().getValue().toString().contains("pocket_dimension"));
-        buf.writeNbt(DynamicBiomeEffects.CODEC
-                        .encodeStart(NbtOps.INSTANCE, state.getDynamicBiomeEffects())
-                        .getOrThrow()
-        );
-        buf.writeIdentifier(state.getSkybox());
-        ServerPlayNetworking.send(player,
-                new DynamicBiomePayload(
-                        world.getRegistryKey().getValue().toString().contains("pocket_dimension"),
-                        state.getDynamicBiomeEffects(),
-                        state.getSkybox()));
-    }
+	public static void syncDynamicBiome(ServerLevel world, ServerPlayer player) {
+		PocketDimensionPersistentState state = PocketDimensionPersistentState.get(world);
+		boolean inPocket = world.dimension().location().toString().contains("pocket_dimension");
+		PocketDimensions.LOGGER.info("doingDynamicBiome with skybox id of {}", state.getSkybox().getPath());
+		PacketDistributor.sendToPlayer(player,
+				new DynamicBiomePayload(inPocket, state.getDynamicBiomeEffects(), state.getSkybox()));
+	}
 }

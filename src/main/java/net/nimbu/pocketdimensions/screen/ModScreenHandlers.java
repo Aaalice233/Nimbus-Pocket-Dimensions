@@ -1,24 +1,20 @@
 package net.nimbu.pocketdimensions.screen;
 
-import net.minecraft.registry.Registries;
-import net.minecraft.registry.Registry;
-import net.minecraft.resource.featuretoggle.FeatureFlags;
-import net.minecraft.screen.ScreenHandlerType;
-import net.minecraft.util.Identifier;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.world.flag.FeatureFlags;
+import net.minecraft.world.inventory.MenuType;
+import net.neoforged.neoforge.registries.DeferredHolder;
+import net.neoforged.neoforge.registries.DeferredRegister;
 import net.nimbu.pocketdimensions.PocketDimensions;
 import net.nimbu.pocketdimensions.screen.custom.DimensionCustomizerScreenHandler;
 
-public class ModScreenHandlers {
+public final class ModScreenHandlers {
+	public static final DeferredRegister<MenuType<?>> MENU_TYPES =
+			DeferredRegister.create(Registries.MENU, PocketDimensions.MOD_ID);
 
-    public static ScreenHandlerType<DimensionCustomizerScreenHandler> POCKET_DIM_BIOME_SCREEN_HANDLER;
+	public static final DeferredHolder<MenuType<?>, MenuType<DimensionCustomizerScreenHandler>> POCKET_DIM_BIOME_SCREEN_HANDLER =
+			MENU_TYPES.register("pocket_dimension_screen_handler",
+					() -> new MenuType<>(DimensionCustomizerScreenHandler::new, FeatureFlags.VANILLA_SET));
 
-    public static void registerScreenHandlers() {
-        POCKET_DIM_BIOME_SCREEN_HANDLER =
-                Registry.register(
-                        Registries.SCREEN_HANDLER,
-                        Identifier.of(PocketDimensions.MOD_ID, "pocket_dimension_screen_handler"),
-                        new ScreenHandlerType<>(DimensionCustomizerScreenHandler::new, FeatureFlags.VANILLA_FEATURES)
-                );
-    }
-
+	private ModScreenHandlers() {}
 }

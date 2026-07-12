@@ -1,18 +1,20 @@
 package net.nimbu.pocketdimensions.worldgen.dimension;
 
-import net.minecraft.registry.RegistryKey;
-import net.minecraft.registry.RegistryKeys;
-import net.minecraft.util.Identifier;
-import net.minecraft.world.World;
-import net.minecraft.world.dimension.DimensionOptions;
-import net.minecraft.world.dimension.DimensionType;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.dimension.DimensionType;
+import net.minecraft.world.level.dimension.LevelStem;
 import net.nimbu.pocketdimensions.PocketDimensions;
 
-public class ModDimensions {
-    public static final RegistryKey<DimensionOptions> POCKET_DIM_KEY = RegistryKey.of(RegistryKeys.DIMENSION,
-            Identifier.of(PocketDimensions.MOD_ID, "pocket_dim"));
-    public static final RegistryKey<World> POCKET_DIM_LEVEL_KEY = RegistryKey.of(RegistryKeys.WORLD,
-            Identifier.of(PocketDimensions.MOD_ID, "pocket_dim"));
-    public static final RegistryKey<DimensionType> POCKET_DIM_TYPE = RegistryKey.of(RegistryKeys.DIMENSION_TYPE,
-            Identifier.of(PocketDimensions.MOD_ID, "pocket_dim_type"));
+public final class ModDimensions {
+	public static final ResourceKey<LevelStem> POCKET_DIM_KEY = ResourceKey.create(Registries.LEVEL_STEM,
+			ResourceLocation.fromNamespaceAndPath(PocketDimensions.MOD_ID, "pocket_dim"));
+	public static final ResourceKey<Level> POCKET_DIM_LEVEL_KEY = ResourceKey.create(Registries.DIMENSION,
+			ResourceLocation.fromNamespaceAndPath(PocketDimensions.MOD_ID, "pocket_dim"));
+	public static final ResourceKey<DimensionType> POCKET_DIM_TYPE = ResourceKey.create(Registries.DIMENSION_TYPE,
+			ResourceLocation.fromNamespaceAndPath(PocketDimensions.MOD_ID, "pocket_dim_type"));
+
+	private ModDimensions() {}
 }

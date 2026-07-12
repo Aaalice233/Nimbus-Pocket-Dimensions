@@ -1,37 +1,50 @@
 package net.nimbu.pocketdimensions.network;
 
 import net.minecraft.nbt.NbtOps;
-import net.minecraft.network.RegistryByteBuf;
-import net.minecraft.network.codec.PacketCodec;
-import net.minecraft.network.packet.CustomPayload;
-import net.minecraft.util.Identifier;
+import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.resources.ResourceLocation;
+import net.neoforged.neoforge.network.handling.IPayloadContext;
 import net.nimbu.pocketdimensions.PocketDimensions;
 import net.nimbu.pocketdimensions.worldgen.biome.DynamicBiomeEffects;
 
-public record DynamicBiomePayload(boolean inPocketDimension, DynamicBiomeEffects dynamicBiomeEffects, Identifier skybox) implements CustomPayload {
+public record DynamicBiomePayload(
+		boolean inPocketDimension,
+		DynamicBiomeEffects dynamicBiomeEffects,
+		ResourceLocation skybox
+) implements CustomPacketPayload {
+	public static final Type<DynamicBiomePayload> TYPE =
+			new Type<>(ResourceLocation.fromNamespaceAndPath(PocketDimensions.MOD_ID, "dynamic_biome_sync"));
 
-    public static final Id<DynamicBiomePayload> ID =
-            new Id<>(Identifier.of(PocketDimensions.MOD_ID, "dynamic_biome_sync"));
+	public static final StreamCodec<RegistryFriendlyByteBuf, DynamicBiomePayload> STREAM_CODEC =
+			StreamCodec.of(DynamicBiomePayload::write, DynamicBiomePayload::read);
 
-    public static final PacketCodec<RegistryByteBuf, DynamicBiomePayload> CODEC =
-            PacketCodec.of(
-                    DynamicBiomePayload::write,
-                    DynamicBiomePayload::read
-            );
+	private static void write(RegistryFriendlyByteBuf buf, DynamicBiomePayload payload) {
+		buf.writeBoolean(payload.inPocketDimension);
+		buf.writeNbt(DynamicBiomeEffects.CODEC.encodeStart(NbtOps.INSTANCE, payload.dynamicBiomeEffects).getOrThrow());
+		buf.writeResourceLocation(payload.skybox);
+	}
 
-    private void write(RegistryByteBuf buf) {
-        buf.writeBoolean(inPocketDimension);
-        buf.writeNbt(DynamicBiomeEffects.CODEC.encodeStart(NbtOps.INSTANCE, dynamicBiomeEffects).getOrThrow());
-        buf.writeIdentifier(skybox);
-    }
+	private static DynamicBiomePayload read(RegistryFriendlyByteBuf buf) {
+		return new DynamicBiomePayload(
+				buf.readBoolean(),
+				DynamicBiomeEffects.CODEC.parse(NbtOps.INSTANCE, buf.readNbt()).getOrThrow(),
+				buf.readResourceLocation()
+		);
+	}
 
-    private static DynamicBiomePayload read(RegistryByteBuf buf) {
-        return new DynamicBiomePayload(
-                buf.readBoolean(),
-                DynamicBiomeEffects.CODEC.parse(NbtOps.INSTANCE, buf.readNbt()).getOrThrow(),
-                buf.readIdentifier());
-    }
+	@Override
+	public Type<? extends CustomPacketPayload> type() {
+		return TYPE;
+	}
 
-    @Override
-    public Id<? extends CustomPayload> getId() { return ID; }
+	public static void handle(DynamicBiomePayload payload, IPayloadContext context) {
+		context.enqueueWork(() -> {
+			PocketDimensions.LOGGER.info("done biome sync with inPocketDim {}", payload.inPocketDimension());
+			ClientPocketDimensionPersistentState.setIsClientInPocketDimension(payload.inPocketDimension());
+			ClientPocketDimensionPersistentState.setDynamicBiomeBiomeEffects(payload.dynamicBiomeEffects());
+			ClientPocketDimensionPersistentState.setSkybox(payload.skybox());
+		});
+	}
 }

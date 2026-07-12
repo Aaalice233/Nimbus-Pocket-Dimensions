@@ -1,17 +1,27 @@
 package net.nimbu.pocketdimensions.component;
 
-import net.minecraft.registry.RegistryKey;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.world.World;
-import org.ladysnake.cca.api.v3.component.Component;
+import net.minecraft.core.BlockPos;
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.world.level.Level;
+import org.jetbrains.annotations.Nullable;
 
-public interface PlayerGatewayComponent extends Component {
-    BlockPos getGatewayPos();
-    void setGatewayPos(BlockPos pos);
+/**
+ * @deprecated Use {@link PlayerGatewayData} via {@link ModAttachments#PLAYER_GATEWAY}.
+ * Kept as a thin alias surface for any lingering call patterns.
+ */
+@Deprecated
+public interface PlayerGatewayComponent {
+	@Nullable
+	BlockPos getGatewayPos();
 
-    RegistryKey<World> getGatewayDim();
-    void setGatewayDim(RegistryKey<World> dim);
+	void setGatewayPos(@Nullable BlockPos pos);
 
-    int getGatewayMaterial();
-    void setGatewayMaterial(int material);
+	@Nullable
+	ResourceKey<Level> getGatewayDim();
+
+	void setGatewayDim(@Nullable ResourceKey<Level> dim);
+
+	int getGatewayMaterial();
+
+	void setGatewayMaterial(int material);
 }

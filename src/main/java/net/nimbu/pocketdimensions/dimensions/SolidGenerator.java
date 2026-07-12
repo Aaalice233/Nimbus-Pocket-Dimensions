@@ -1,34 +1,35 @@
 package net.nimbu.pocketdimensions.dimensions;
-import net.minecraft.block.Blocks;
-import net.minecraft.registry.entry.RegistryEntry;
-import net.minecraft.world.biome.Biome;
-import net.minecraft.world.dimension.DimensionType;
-import net.minecraft.world.gen.chunk.FlatChunkGenerator;
-import net.minecraft.world.gen.chunk.FlatChunkGeneratorConfig;
-import net.minecraft.world.gen.chunk.FlatChunkGeneratorLayer;
+
+import net.minecraft.core.Holder;
+import net.minecraft.world.level.biome.Biome;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.dimension.DimensionType;
+import net.minecraft.world.level.levelgen.FlatLevelSource;
+import net.minecraft.world.level.levelgen.flat.FlatLayerInfo;
+import net.minecraft.world.level.levelgen.flat.FlatLevelGeneratorSettings;
 
 import java.util.List;
 import java.util.Optional;
 
-public class SolidGenerator {
+public final class SolidGenerator {
+	private SolidGenerator() {}
 
-    public static FlatChunkGenerator create(RegistryEntry<Biome> biome) {
-        FlatChunkGeneratorConfig config = new FlatChunkGeneratorConfig(
-                Optional.empty(), // no structures
-                biome,
-                List.of() // no features
-        );
+	public static FlatLevelSource create(Holder<Biome> biome) {
+		FlatLevelGeneratorSettings config = new FlatLevelGeneratorSettings(
+				Optional.empty(),
+				biome,
+				List.of()
+		);
 
-        // ENTIRE WORLD = BARRIER
-        config.getLayers().add(
-                new FlatChunkGeneratorLayer(
-                        DimensionType.MAX_HEIGHT,
-                        Blocks.BARRIER
-                )
-        );
+		// ENTIRE WORLD = BARRIER
+		config.getLayersInfo().add(
+				new FlatLayerInfo(
+						DimensionType.Y_SIZE,
+						Blocks.BARRIER
+				)
+		);
 
-        config.updateLayerBlocks();
-
-        return new FlatChunkGenerator(config);
-    }
+		config.updateLayers();
+		return new FlatLevelSource(config);
+	}
 }

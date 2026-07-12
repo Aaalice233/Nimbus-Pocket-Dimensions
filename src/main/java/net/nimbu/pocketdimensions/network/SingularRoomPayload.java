@@ -1,33 +1,29 @@
 package net.nimbu.pocketdimensions.network;
 
-import net.minecraft.network.RegistryByteBuf;
-import net.minecraft.network.codec.PacketCodec;
-import net.minecraft.network.packet.CustomPayload;
-import net.minecraft.util.Identifier;
-import net.minecraft.util.math.BlockPos;
+import net.minecraft.core.BlockPos;
+import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.resources.ResourceLocation;
+import net.neoforged.neoforge.network.handling.IPayloadContext;
 import net.nimbu.pocketdimensions.PocketDimensions;
 
-public record SingularRoomPayload(BlockPos room) implements CustomPayload {
+public record SingularRoomPayload(BlockPos room) implements CustomPacketPayload {
+	public static final Type<SingularRoomPayload> TYPE =
+			new Type<>(ResourceLocation.fromNamespaceAndPath(PocketDimensions.MOD_ID, "singlular_room_update"));
 
-    public static final Id<SingularRoomPayload> ID =
-            new Id<>(Identifier.of(PocketDimensions.MOD_ID, "singlular_room_update"));
+	public static final StreamCodec<RegistryFriendlyByteBuf, SingularRoomPayload> STREAM_CODEC =
+			StreamCodec.of(
+					(buf, payload) -> buf.writeBlockPos(payload.room),
+					buf -> new SingularRoomPayload(buf.readBlockPos())
+			);
 
-    public static final PacketCodec<RegistryByteBuf, SingularRoomPayload> CODEC =
-            PacketCodec.of(
-                    SingularRoomPayload::write,
-                    SingularRoomPayload::read
-            );
+	@Override
+	public Type<? extends CustomPacketPayload> type() {
+		return TYPE;
+	}
 
-    private void write(RegistryByteBuf buf) {
-        buf.writeBlockPos(room);
-    }
-
-    private static SingularRoomPayload read(RegistryByteBuf buf) {
-        return new SingularRoomPayload(buf.readBlockPos());
-    }
-
-    @Override
-    public Id<? extends CustomPayload> getId() {
-        return ID;
-    }
+	public static void handle(SingularRoomPayload payload, IPayloadContext context) {
+		context.enqueueWork(() -> ClientPocketDimensionPersistentState.addRoom(payload.room()));
+	}
 }

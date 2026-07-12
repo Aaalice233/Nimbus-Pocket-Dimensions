@@ -1,85 +1,52 @@
 package net.nimbu.pocketdimensions.screen.custom;
 
-import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.entity.player.PlayerInventory;
-import net.minecraft.item.ItemStack;
-import net.minecraft.screen.Property;
-import net.minecraft.screen.ScreenHandler;
-import net.minecraft.util.math.BlockPos;
-import net.nimbu.pocketdimensions.PocketDimensions;
-import net.nimbu.pocketdimensions.component.ModComponentInitializer;
-import net.nimbu.pocketdimensions.component.PlayerGatewayComponent;
+import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.inventory.AbstractContainerMenu;
+import net.minecraft.world.item.ItemStack;
 import net.nimbu.pocketdimensions.network.ClientPocketDimensionPersistentState;
-import net.nimbu.pocketdimensions.network.UpdateBiomePacket;
 import net.nimbu.pocketdimensions.screen.ModScreenHandlers;
 import net.nimbu.pocketdimensions.worldgen.biome.DynamicBiomeEffects;
 
-import java.util.Optional;
+public class DimensionCustomizerScreenHandler extends AbstractContainerMenu {
+	public DimensionCustomizerScreenHandler(int syncId, Inventory inventory) {
+		super(ModScreenHandlers.POCKET_DIM_BIOME_SCREEN_HANDLER.get(), syncId);
+	}
 
-public class DimensionCustomizerScreenHandler extends ScreenHandler {
-    public DimensionCustomizerScreenHandler(
-            int syncId,
-            PlayerInventory inventory
-    ) {
-        super(ModScreenHandlers.POCKET_DIM_BIOME_SCREEN_HANDLER, syncId);
-    }
+	public int[] getSkyColour() {
+		DynamicBiomeEffects fx = ClientPocketDimensionPersistentState.getDynamicBiomeEffects();
+		return new int[]{(fx.getSkyColor() >> 16) & 0xFF, (fx.getSkyColor() >> 8) & 0xFF, fx.getSkyColor() & 0xFF};
+	}
 
-    public int[] getSkyColour() {
-        DynamicBiomeEffects fx = ClientPocketDimensionPersistentState.getDynamicBiomeEffects();
-        int R = ((fx.getSkyColor() >> 16) & 0xFF);
-        int G = ((fx.getSkyColor() >> 8) & 0xFF);
-        int B = (fx.getSkyColor() & 0xFF);
-        return new int[]{R, G, B};
-    }
+	public int[] getFoliageColour() {
+		DynamicBiomeEffects fx = ClientPocketDimensionPersistentState.getDynamicBiomeEffects();
+		int c = fx.getFoliageColor().orElse(0x77AB2F);
+		return new int[]{(c >> 16) & 0xFF, (c >> 8) & 0xFF, c & 0xFF};
+	}
 
-    public int[] getFoliageColour() {
-        DynamicBiomeEffects fx = ClientPocketDimensionPersistentState.getDynamicBiomeEffects();
-        int R = ((fx.getFoliageColor().get() >> 16) & 0xFF);
-        int G = ((fx.getFoliageColor().get() >> 8) & 0xFF);
-        int B = (fx.getFoliageColor().get() & 0xFF);
-        return new int[]{R, G, B};
-    }
+	public int[] getWaterFogColour() {
+		DynamicBiomeEffects fx = ClientPocketDimensionPersistentState.getDynamicBiomeEffects();
+		return new int[]{(fx.getWaterFogColor() >> 16) & 0xFF, (fx.getWaterFogColor() >> 8) & 0xFF, fx.getWaterFogColor() & 0xFF};
+	}
 
-    public int[] getWaterFogColour() {
-        DynamicBiomeEffects fx = ClientPocketDimensionPersistentState.getDynamicBiomeEffects();
-        int R = ((fx.getWaterFogColor() >> 16) & 0xFF);
-        int G = ((fx.getWaterFogColor() >> 8) & 0xFF);
-        int B = (fx.getWaterFogColor() & 0xFF);
-        return new int[]{R, G, B};
-    }
+	public int[] getWaterColour() {
+		DynamicBiomeEffects fx = ClientPocketDimensionPersistentState.getDynamicBiomeEffects();
+		return new int[]{(fx.getWaterColor() >> 16) & 0xFF, (fx.getWaterColor() >> 8) & 0xFF, fx.getWaterColor() & 0xFF};
+	}
 
-    public int[] getWaterColour() {
-        DynamicBiomeEffects fx = ClientPocketDimensionPersistentState.getDynamicBiomeEffects();
-        int R = ((fx.getWaterColor() >> 16) & 0xFF);
-        int G = ((fx.getWaterColor() >> 8) & 0xFF);
-        int B = (fx.getWaterColor() & 0xFF);
-        return new int[]{R, G, B};
-    }
+	public int[] getGrassColour() {
+		DynamicBiomeEffects fx = ClientPocketDimensionPersistentState.getDynamicBiomeEffects();
+		int c = fx.getGrassColor().orElse(0x91BD59);
+		return new int[]{(c >> 16) & 0xFF, (c >> 8) & 0xFF, c & 0xFF};
+	}
 
-    public int[] getGrassColour() {
-        DynamicBiomeEffects fx = ClientPocketDimensionPersistentState.getDynamicBiomeEffects();
-        int R = ((fx.getGrassColor().get() >> 16) & 0xFF);
-        int G = ((fx.getGrassColor().get() >> 8) & 0xFF);
-        int B = (fx.getGrassColor().get() & 0xFF);
-        return new int[]{R, G, B};
-    }
+	@Override
+	public boolean stillValid(Player player) {
+		return true;
+	}
 
-
-
-    @Override
-    public boolean canUse(PlayerEntity player) {
-        return true;
-    }
-
-    @Override
-    public ItemStack quickMove(PlayerEntity player, int slot) {
-        return ItemStack.EMPTY;
-    }
-
-    @Override
-    public void onClosed(PlayerEntity player) {
-        super.onClosed(player);
-    }
+	@Override
+	public ItemStack quickMoveStack(Player player, int slot) {
+		return ItemStack.EMPTY;
+	}
 }

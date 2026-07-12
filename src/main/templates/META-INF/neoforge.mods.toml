@@ -1,0 +1,30 @@
+modLoader="javafml"
+loaderVersion="${loader_version_range}"
+license="${mod_license}"
+issueTrackerURL="https://github.com/Aaalice233/Nimbus-Pocket-Dimensions/issues"
+
+[[mods]]
+modId="${mod_id}"
+version="${mod_version}"
+displayName="${mod_name}"
+displayURL="https://modrinth.com/mod/nimbus-pocket-dimensions"
+logoFile="assets/pocketdimensions/icon.png"
+authors="Nimbu"
+description='''A mod that adds simple, customizable pocket dimensions that can be accessed from anywhere. NeoForge port.'''
+
+[[mixins]]
+config="pocketdimensions.mixins.json"
+
+[[dependencies.${mod_id}]]
+    modId="neoforge"
+    type="required"
+    versionRange="[${neo_version},)"
+    ordering="NONE"
+    side="BOTH"
+
+[[dependencies.${mod_id}]]
+    modId="minecraft"
+    type="required"
+    versionRange="${minecraft_version_range}"
+    ordering="NONE"
+    side="BOTH"

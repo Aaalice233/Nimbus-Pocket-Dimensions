@@ -1,278 +1,217 @@
 package net.nimbu.pocketdimensions.entity.custom;
 
-import net.minecraft.block.Block;
-import net.minecraft.block.BlockState;
-import net.minecraft.block.Blocks;
-import net.minecraft.block.entity.BlockEntity;
-import net.minecraft.block.enums.DoubleBlockHalf;
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.EntityType;
-import net.minecraft.entity.data.DataTracker;
-import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.entity.projectile.ProjectileEntity;
-import net.minecraft.entity.projectile.ProjectileUtil;
-import net.minecraft.registry.RegistryKey;
-import net.minecraft.server.world.ServerWorld;
-import net.minecraft.sound.SoundCategory;
-import net.minecraft.sound.SoundEvents;
-import net.minecraft.util.hit.BlockHitResult;
-import net.minecraft.util.hit.HitResult;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.Direction;
-import net.minecraft.util.math.Position;
-import net.minecraft.util.math.Vec3d;
-import net.minecraft.world.World;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.core.Position;
+import net.minecraft.network.syncher.SynchedEntityData;
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.sounds.SoundEvents;
+import net.minecraft.sounds.SoundSource;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.entity.projectile.Projectile;
+import net.minecraft.world.entity.projectile.ProjectileUtil;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.block.state.properties.BlockStateProperties;
+import net.minecraft.world.level.block.state.properties.DoubleBlockHalf;
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.HitResult;
+import net.minecraft.world.phys.Vec3;
 import net.nimbu.pocketdimensions.block.ModBlocks;
 import net.nimbu.pocketdimensions.block.entity.custom.GatewayBlockEntity;
-import net.nimbu.pocketdimensions.component.ModComponentInitializer;
-import net.nimbu.pocketdimensions.component.PlayerGatewayComponent;
+import net.nimbu.pocketdimensions.component.ModAttachments;
+import net.nimbu.pocketdimensions.component.PlayerGatewayData;
 import net.nimbu.pocketdimensions.particle.ModParticleTypes;
 import net.nimbu.pocketdimensions.worldgen.dimension.ModDimensions;
 
-import static net.minecraft.block.HorizontalFacingBlock.FACING;
 import static net.nimbu.pocketdimensions.block.custom.GatewayBlock.HALF;
 
-public class GatewayProjectileEntity extends ProjectileEntity {
+public class GatewayProjectileEntity extends Projectile {
+	private ResourceKey<Level> exitDimensionID;
 
-    RegistryKey<World> exitDimensionID;
-    public GatewayProjectileEntity(EntityType<? extends ProjectileEntity> entityType, World world) {
-        super(entityType, world);
+	public GatewayProjectileEntity(EntityType<? extends Projectile> entityType, Level world) {
+		super(entityType, world);
+	}
 
-    }
+	public void setExitDimension(ResourceKey<Level> exitDimension) {
+		exitDimensionID = exitDimension;
+	}
 
-    public void setExitDimension(RegistryKey<World> exitDimension)
-    {
-        exitDimensionID = exitDimension;
-    }
+	private void createPortal(Level world, BlockPos bottomHalf, PlayerGatewayData data) {
+		if (!world.dimensionTypeRegistration().is(ModDimensions.POCKET_DIM_TYPE)) {
+			BlockPos topHalf = bottomHalf.above();
+			if (!(world.getBlockEntity(bottomHalf.below()) instanceof GatewayBlockEntity)
+					&& isReplaceable(world, bottomHalf)
+					&& isReplaceable(world, topHalf)) {
 
-    private void createPortal(World world, BlockPos bottomHalf, PlayerGatewayComponent comp){
+				float yaw = this.getYRot();
+				Direction direction;
+				if (45 < yaw && yaw < 135) {
+					direction = Direction.WEST;
+				} else if (-45 < yaw && yaw < 45) {
+					direction = Direction.NORTH;
+				} else if (-135 < yaw && yaw < -45) {
+					direction = Direction.EAST;
+				} else {
+					direction = Direction.SOUTH;
+				}
 
+				Block doortype = switch (data.getGatewayMaterial()) {
+					case 1 -> ModBlocks.OAK_GATEWAY.get();
+					case 2 -> ModBlocks.SPRUCE_GATEWAY.get();
+					case 3 -> ModBlocks.BIRCH_GATEWAY.get();
+					case 4 -> ModBlocks.JUNGLE_GATEWAY.get();
+					case 5 -> ModBlocks.ACACIA_GATEWAY.get();
+					case 7 -> ModBlocks.MANGROVE_GATEWAY.get();
+					case 8 -> ModBlocks.CHERRY_GATEWAY.get();
+					case 9 -> ModBlocks.CRIMSON_GATEWAY.get();
+					case 10 -> ModBlocks.WARPED_GATEWAY.get();
+					case 11 -> ModBlocks.BAMBOO_GATEWAY.get();
+					default -> ModBlocks.DARK_OAK_GATEWAY.get();
+				};
 
+				world.setBlock(bottomHalf, doortype.defaultBlockState()
+						.setValue(BlockStateProperties.HORIZONTAL_FACING, direction), 3);
+				if (world.getBlockEntity(bottomHalf) instanceof GatewayBlockEntity portalData) {
+					portalData.TriggerInitialIDUpdate(world, bottomHalf, exitDimensionID, doortype);
+				}
+				world.setBlock(topHalf, doortype.defaultBlockState()
+						.setValue(HALF, DoubleBlockHalf.UPPER)
+						.setValue(BlockStateProperties.HORIZONTAL_FACING, direction), 3);
 
+				BlockPos previousPos = data.getGatewayPos();
+				ResourceKey<Level> previousDimension = data.getGatewayDim();
+				if (previousPos != null && previousDimension != null && world.getServer() != null) {
+					ServerLevel targetWorld = world.getServer().getLevel(previousDimension);
+					if (targetWorld != null) {
+						targetWorld.setBlock(previousPos, Blocks.AIR.defaultBlockState(), 3);
+					}
+				}
 
-            if (!world.getDimensionEntry().matchesKey(ModDimensions.POCKET_DIM_TYPE)){
+				data.setGatewayPos(bottomHalf);
+				data.setGatewayDim(world.dimension());
 
-                BlockPos topHalf = bottomHalf.up();
-                if (!(world.getBlockEntity(bottomHalf.down()) instanceof GatewayBlockEntity) && //if not on top of a gateway
-                        (world.getBlockState(bottomHalf).isOf(Blocks.AIR) ||
-                        world.getBlockState(bottomHalf).isOf(Blocks.CAVE_AIR) ||
-                        world.getBlockState(bottomHalf).isOf(Blocks.SNOW) ||
-                        world.getBlockState(bottomHalf).isOf(Blocks.TALL_GRASS) ||
-                        world.getBlockState(bottomHalf).isOf(Blocks.SHORT_GRASS)) &&
-                        (world.getBlockState(topHalf).isOf(Blocks.AIR) ||
-                        world.getBlockState(topHalf).isOf(Blocks.CAVE_AIR) ||
-                        world.getBlockState(topHalf).isOf(Blocks.TALL_GRASS))) {
+				world.playSound(null, this.getX(), this.getY(), this.getZ(),
+						SoundEvents.BEACON_ACTIVATE,
+						SoundSource.NEUTRAL,
+						1f, 1.5f);
 
-                    //Find gateway orientation
-                    float yaw = this.getYaw();
-                    Direction direction;
-                    if (45 < yaw && yaw < 135) {
-                        direction = Direction.WEST;
-                    } else if (-45 < yaw && yaw < 45) {
-                        direction = Direction.NORTH;
-                    } else if (-135 < yaw && yaw < -45) {
-                        direction = Direction.EAST;
-                    } else {
-                        direction = Direction.SOUTH;
-                    }
-                    //Find gateway material
-                    Block doortype;
-                    switch (comp.getGatewayMaterial()){
-                        case 1: doortype=ModBlocks.OAK_GATEWAY; break;
-                        case 2: doortype=ModBlocks.SPRUCE_GATEWAY; break;
-                        case 3: doortype=ModBlocks.BIRCH_GATEWAY; break;
-                        case 4: doortype=ModBlocks.JUNGLE_GATEWAY; break;
-                        case 5: doortype=ModBlocks.ACACIA_GATEWAY; break;
-                        //case 6: doortype=ModBlocks.DARK_OAK_GATEWAY; break;  //unneeded
-                        case 7: doortype=ModBlocks.MANGROVE_GATEWAY; break;
-                        case 8: doortype=ModBlocks.CHERRY_GATEWAY; break;
-                        case 9: doortype=ModBlocks.CRIMSON_GATEWAY; break;
-                        case 10: doortype=ModBlocks.WARPED_GATEWAY; break;
-                        case 11: doortype=ModBlocks.BAMBOO_GATEWAY; break;
-                        default: doortype=ModBlocks.DARK_OAK_GATEWAY; break;
-                    }
-                    world.setBlockState(bottomHalf, doortype.getDefaultState().with(FACING, direction));
-                    if (world.getBlockEntity(bottomHalf) instanceof GatewayBlockEntity portalData) {
-                        portalData.TriggerInitialIDUpdate(world, bottomHalf, exitDimensionID, doortype);
-                    }
-                    world.setBlockState(topHalf, doortype.getDefaultState().with(HALF, DoubleBlockHalf.UPPER).with(FACING, direction));
+				Position pos = this.position();
+				((ServerLevel) world).sendParticles(ModParticleTypes.GATEWAY_PROJECTILE_PARTICLE.get(),
+						pos.x(), pos.y(), pos.z(), 50, 0.5, 1, 0.5, 0.5);
+			} else {
+				world.playSound(null, this.getX(), this.getY(), this.getZ(),
+						SoundEvents.TRIAL_SPAWNER_PLACE,
+						SoundSource.NEUTRAL,
+						1f, 1.4f);
+			}
+		} else {
+			world.playSound(null, this.getX(), this.getY(), this.getZ(),
+					SoundEvents.TRIAL_SPAWNER_PLACE,
+					SoundSource.NEUTRAL,
+					1f, 1.4f);
+		}
+	}
 
+	private static boolean isReplaceable(Level world, BlockPos pos) {
+		var state = world.getBlockState(pos);
+		return state.isAir()
+				|| state.is(Blocks.CAVE_AIR)
+				|| state.is(Blocks.SNOW)
+				|| state.is(Blocks.TALL_GRASS)
+				|| state.is(Blocks.SHORT_GRASS);
+	}
 
-                    //Delete data at saved position
-                    BlockPos previousPos = comp.getGatewayPos();
-                    RegistryKey<World> previousDimension = comp.getGatewayDim();
-                    if (previousPos != null && previousDimension != null) {
-                        ServerWorld targetWorld = world.getServer().getWorld(previousDimension); // get the correct dimension
-                        if (targetWorld != null) {
-                            //TODO: Only set block state if its a gateway (and IS the last gateway, not a different one)
-                            //if (targetWorld.getBlockState(previousPos).isOf(ModBlocks.)){
-                            targetWorld.setBlockState(previousPos, Blocks.AIR.getDefaultState());
+	@Override
+	public void tick() {
+		super.tick();
+		Vec3 vec3d = this.getDeltaMovement();
+		HitResult hitResult = ProjectileUtil.getHitResultOnMoveVector(this, this::canHitEntity);
+		this.hitTargetOrDeflectSelf(hitResult);
+		double d = this.getX() + vec3d.x;
+		double e = this.getY() + vec3d.y;
+		double f = this.getZ() + vec3d.z;
+		this.updateRotation();
+		this.setDeltaMovement(vec3d.scale(0.95F));
+		this.applyGravity();
+		this.setPos(d, e, f);
 
-                        }
-                    }
+		Level world = this.level();
+		if (!world.isClientSide()) {
+			Position pos = this.position();
+			((ServerLevel) world).sendParticles(ModParticleTypes.GATEWAY_PROJECTILE_PARTICLE.get(),
+					pos.x(), pos.y() + 0.25, pos.z(), 5, 0, 0, 0, 0);
+		}
+	}
 
-                    //Save the position of placement for deletion later
-                    comp.setGatewayPos(bottomHalf);
-                    comp.setGatewayDim(world.getRegistryKey());
+	@Override
+	protected double getDefaultGravity() {
+		return 0.03;
+	}
 
+	@Override
+	protected void defineSynchedData(SynchedEntityData.Builder builder) {
+	}
 
-                    //horizontal facing appears to be broken for projectile entities??
-                    //world.setBlockState(bottomHalf, ModBlocks.DOORWAY.getDefaultState().with(FACING, this.getHorizontalFacing().getOpposite()));
-                    //world.setBlockState(topHalf, ModBlocks.DOORWAY.getDefaultState().with(HALF, DoubleBlockHalf.UPPER).with(FACING, this.getHorizontalFacing().getOpposite()));//ctx.getHorizontalPlayerFacing().getOpposite()));
+	@Override
+	public boolean canUsePortal(boolean allowVehicles) {
+		return false;
+	}
 
-                    world.playSound(null, this.getX(), this.getY(), this.getZ(),
-                            SoundEvents.BLOCK_BEACON_ACTIVATE,
-                            SoundCategory.NEUTRAL,
-                            1f,
-                            1.5f);
+	@Override
+	public boolean shouldRenderAtSqrDistance(double distance) {
+		double d = this.getBoundingBox().getSize() * 4.0;
+		if (Double.isNaN(d)) {
+			d = 4.0;
+		}
+		d *= 64.0;
+		return distance < d * d;
+	}
 
-                    //create particle effect
-                    Position pos = this.getPos();
-                    ((ServerWorld) world).spawnParticles(ModParticleTypes.GATEWAY_PROJECTILE_PARTICLE,
-                            pos.getX(), pos.getY(), pos.getZ(), 50, 0.5, 1, 0.5, 0.5);
-                }
-                else{  //if projectile does not land on an empty position
+	@Override
+	protected void onHitBlock(BlockHitResult blockHitResult) {
+		Level world = this.level();
+		if (world.isClientSide()) return;
 
-//                    if (world.getBlockEntity(bottomHalf) instanceof GatewayBlockEntity previousPocketDimensionGatewayEntity) {
-//                        world.setBlockState(bottomHalf, Blocks.AIR.getDefaultState());
-//                    }
-//                    else if (world.getBlockEntity(bottomHalf.down()) instanceof GatewayBlockEntity previousPocketDimensionGatewayEntity) {
-//                        world.setBlockState(bottomHalf, Blocks.AIR.getDefaultState());
-//                    }
-//
-//                    comp.setGatewayPos(null);
+		BlockPos blockPos = blockHitResult.getBlockPos();
+		Direction direction = blockHitResult.getDirection();
 
-                    world.playSound(null, this.getX(), this.getY(), this.getZ(),
-                            SoundEvents.BLOCK_TRIAL_SPAWNER_PLACE,
-                            SoundCategory.NEUTRAL,
-                            1f,
-                            1.4f);
-                }
-            }
-            else{ //if in pocket dimension already
-                world.playSound(null, this.getX(), this.getY(), this.getZ(),
-                        SoundEvents.BLOCK_TRIAL_SPAWNER_PLACE,
-                        SoundCategory.NEUTRAL,
-                        1f,
-                        1.4f);
-            }
+		Entity owner = this.getOwner();
+		if (!(owner instanceof Player player)) return;
+		PlayerGatewayData data = PlayerGatewayData.get(player);
 
+		BlockEntity blockEntity = world.getBlockEntity(blockPos);
+		if (!(blockEntity instanceof GatewayBlockEntity)) {
+			blockEntity = world.getBlockEntity(blockPos.below());
+		}
+		if ((blockEntity instanceof GatewayBlockEntity gatewayBlockEntity)
+				&& (exitDimensionID != null && exitDimensionID.equals(gatewayBlockEntity.getExitDimension()))) {
+			world.setBlock(blockPos, Blocks.AIR.defaultBlockState(), 3);
+			data.setGatewayPos(null);
+			world.playSound(null, this.getX(), this.getY(), this.getZ(),
+					SoundEvents.TRIAL_SPAWNER_PLACE,
+					SoundSource.NEUTRAL,
+					1f, 1.4f);
+		} else {
+			blockPos = switch (direction) {
+				case UP -> blockPos.above();
+				case DOWN -> blockPos.below();
+				case NORTH -> blockPos.north();
+				case SOUTH -> blockPos.south();
+				case EAST -> blockPos.east();
+				case WEST -> blockPos.west();
+			};
+			createPortal(this.level(), blockPos, data);
+			// write back in case attachment copy semantics need explicit set
+			player.setData(ModAttachments.PLAYER_GATEWAY.get(), data);
+		}
 
-
-    }
-
-    public void recordPortalPosition(PlayerEntity owner){
-        //save block position to nbt using cardinal components
-        //
-    }
-
-    @Override
-    public void tick() {
-        super.tick();
-        Vec3d vec3d = this.getVelocity();
-        HitResult hitResult = ProjectileUtil.getCollision(this, this::canHit);
-        this.hitOrDeflect(hitResult);
-        double d = this.getX() + vec3d.x;
-        double e = this.getY() + vec3d.y;
-        double f = this.getZ() + vec3d.z;
-        this.updateRotation();
-        float g = 0.95F;
-
-        this.setVelocity(vec3d.multiply(g));
-        this.applyGravity();
-        this.setPosition(d, e, f);
-
-        World world = this.getWorld();
-        if (!world.isClient()){
-            Position pos = this.getPos();
-            ((ServerWorld) world).spawnParticles(ModParticleTypes.GATEWAY_PROJECTILE_PARTICLE,
-                   pos.getX(), pos.getY()+0.25, pos.getZ(), 5, 0, 0, 0, 0);
-        }
-    }
-
-    @Override
-    protected double getGravity() {
-        return 0.03;
-    }
-
-    @Override
-    protected void initDataTracker(DataTracker.Builder builder) {
-    }
-
-    @Override
-    public boolean canUsePortals(boolean allowVehicles) {
-        return false;
-    }
-
-    @Override
-    public boolean shouldRender(double distance) {
-        double d = this.getBoundingBox().getAverageSideLength() * 4.0;
-        if (Double.isNaN(d)) {
-            d = 4.0;
-        }
-
-        d *= 64.0;
-        return distance < d * d;
-    }
-
-    @Override
-    protected void onBlockHit(BlockHitResult blockHitResult) {
-        World world = this.getWorld();
-        if (world.isClient()) return;
-
-        BlockPos blockPos = blockHitResult.getBlockPos();
-        Direction direction = blockHitResult.getSide();
-        System.out.println("Blockpos: " + blockPos);
-        System.out.println("Direction: " + direction);
-
-        Entity owner = this.getOwner();
-        if (!(owner instanceof PlayerEntity)) return; //ensures cannot create portal if not player
-        PlayerGatewayComponent comp = ModComponentInitializer.PLAYER_GATEWAY_KEY.get(owner);
-
-        //check if hitting a gateway
-        BlockEntity blockEntity = world.getBlockEntity(blockPos);
-        if (!(blockEntity instanceof GatewayBlockEntity)) {
-            blockEntity = world.getBlockEntity(blockPos.down());
-            System.out.println("Gateway entity NOT found for top half.");
-        }
-        if ((blockEntity instanceof GatewayBlockEntity gatewayBlockEntity) && (exitDimensionID==gatewayBlockEntity.getExitDimension())) {
-            System.out.println("Lower gateway entity found.");
-
-            world.setBlockState(blockPos, Blocks.AIR.getDefaultState());
-            comp.setGatewayPos(null);
-            world.playSound(null, this.getX(), this.getY(), this.getZ(),
-                    SoundEvents.BLOCK_TRIAL_SPAWNER_PLACE,
-                    SoundCategory.NEUTRAL,
-                    1f,
-                    1.4f);
-        }
-        else {
-            switch (direction) {
-                case UP:
-                    blockPos = blockPos.up();
-                    break;
-                case DOWN:
-                    blockPos = blockPos.down();
-                    break;
-                case NORTH:
-                    blockPos = blockPos.north();
-                    break;
-                case SOUTH:
-                    blockPos = blockPos.south();
-                    break;
-                case EAST:
-                    blockPos = blockPos.east();
-                    break;
-                case WEST:
-                    blockPos = blockPos.west();
-                    break;
-            }
-            System.out.println("Blockpos: " + blockPos);
-
-            createPortal(this.getWorld(), blockPos, comp);
-        }
-
-        super.onBlockHit(blockHitResult);
-        this.discard();
-    }
+		super.onHitBlock(blockHitResult);
+		this.discard();
+	}
 }
